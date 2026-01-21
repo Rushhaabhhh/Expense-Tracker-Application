@@ -9,18 +9,40 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000,
 });
 
-// Add auth token to requests
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+        console.log('Token sent to:', config.url?.substring(config.url.lastIndexOf('/') + 1));
+      } else {
+        console.log('No authToken found - public request:', config.url);
+      }
+    } catch (error) {
+      console.error('Token fetch error:', error);
     }
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Response interceptor for debugging
+api.interceptors.response.use(
+  (response) => {
+    console.log('API Success:', response.config.url, response.status);
+    return response;
+  },
+  (error) => {
+    console.error('API Error:', error.config?.url, error.response?.status);
+    if (error.response?.status === 401) {
+      console.log('401 - Token invalid/expired');
+    }
+    return Promise.reject(error);
+  }
 );
 
 // Auth APIs
@@ -66,7 +88,13 @@ export const expenseAPI = {
     return response.data.expense;
   },
 
-  getExpenses: async (filters?: { category?: string; month?: number; year?: number }) => {
+  getExpenses: async (filters?: { 
+    category?: string; 
+    startDate?: string; 
+    endDate?: string; 
+    month?: number; 
+    year?: number 
+  }) => {
     const response = await api.get<{ expenses: Expense[] }>('/expenses', {
       params: filters,
     });
