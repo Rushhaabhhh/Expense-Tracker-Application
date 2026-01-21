@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   ScrollView,
   RefreshControl,
-  Alert,
+  Animated,
+  StyleSheet,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { LogOut, Plus, List, BarChart3, AlertCircle, DollarSign } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { expenseAPI } from '../services/api';
 import { MonthlySummary } from '../types';
 
@@ -16,9 +19,11 @@ const HomeScreen = ({ navigation }: any) => {
   const { user, logout } = useAuth();
   const [summary, setSummary] = useState<MonthlySummary | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const fadeAnim = useState(new Animated.Value(0))[0];
 
   useEffect(() => {
     loadSummary();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
   }, []);
 
   const loadSummary = async () => {
@@ -36,11 +41,19 @@ const HomeScreen = ({ navigation }: any) => {
     setRefreshing(false);
   };
 
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', onPress: logout, style: 'destructive' },
-    ]);
+  // ✅ INSTANT LOGOUT (No Alert)
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.multiRemove(['expensesCache', 'summaryCache']);
+      await logout();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Auth' }],
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const getMonthName = (month: number) => {
@@ -53,155 +66,202 @@ const HomeScreen = ({ navigation }: any) => {
   const isNearBudget = budgetPercentage > 80 && budgetPercentage <= 100;
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Hello, {user?.name}!</Text>
-          <Text style={styles.date}>
-            {summary ? `${getMonthName(summary.month)} ${summary.year}` : ''}
-          </Text>
-        </View>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.budgetCard}>
-        <Text style={styles.budgetTitle}>Monthly Budget</Text>
-        <Text style={styles.budgetAmount}>₹{summary?.budget || 0}</Text>
-        
-        <View style={styles.progressBar}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${Math.min(budgetPercentage, 100)}%` },
-              isOverBudget && styles.progressOverBudget,
-              isNearBudget && styles.progressNearBudget,
-            ]}
-          />
-        </View>
-
-        <View style={styles.budgetDetails}>
-          <View>
-            <Text style={styles.detailLabel}>Spent</Text>
-            <Text style={styles.detailValue}>₹{summary?.totalSpent || 0}</Text>
+    <LinearGradient colors={['#f8fafc', '#f1f5f9']} style={styles.container}>
+      <ScrollView
+        style={styles.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.greeting}>Hello, {user?.name}!</Text>
+              <Text style={styles.date}>
+                {summary ? `${getMonthName(summary.month)} ${summary.year}` : ''}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
+              <LogOut size={24} color="#ef4444" />
+            </TouchableOpacity>
           </View>
-          <View>
-            <Text style={styles.detailLabel}>Remaining</Text>
-            <Text style={[styles.detailValue, isOverBudget && styles.negativeValue]}>
-              ₹{summary?.remaining || 0}
+
+          {/* ✅ Budget Card - SWAPPED CONTENTS */}
+          <View style={[
+            styles.budgetCard,
+            isOverBudget && styles.budgetCardWarning
+          ]}>
+            <View style={styles.budgetHeader}>
+              <DollarSign size={20} color="#64748b" />
+              <Text style={styles.budgetLabel}>Remaining</Text>
+            </View>
+            
+            {/* ✅ SWAPPED: Remaining → Big Display, Spent → Detail */}
+            <Text style={styles.budgetAmount}>
+              ₹{summary?.remaining?.toLocaleString() || '0'}
             </Text>
+            
+            <View style={styles.progressContainer}>
+              <View style={[
+                styles.progressBar,
+                {
+                  width: `${Math.min(budgetPercentage, 100)}%`,
+                  backgroundColor: isOverBudget ? '#f87171' : 
+                                  isNearBudget ? '#f59e0b' : '#10b981',
+                }
+              ]} />
+            </View>
+
+            <View style={styles.budgetDetails}>
+              <View>
+                <Text style={styles.detailLabel}>Spent</Text>
+                <Text style={[
+                  styles.detailValue,
+                  isOverBudget && styles.negativeValue
+                ]}>
+                  ₹{summary?.totalSpent?.toLocaleString() || '0'}
+                </Text>
+              </View>
+              <View>
+                <Text style={styles.detailLabel}>Monthly Budget</Text>
+                <Text style={styles.detailValue}>
+                  ₹{summary?.budget?.toLocaleString() || '0'}
+                </Text>
+              </View>
+            </View>
+
+            {(isOverBudget || isNearBudget) && (
+              <View style={styles.warningContainer}>
+                <AlertCircle size={20} color="#f59e0b" style={styles.warningIcon} />
+                <Text style={styles.warningText}>
+                  {isOverBudget ? "You've exceeded your budget!" : "You're near your budget limit"}
+                </Text>
+              </View>
+            )}
           </View>
-        </View>
 
-        {isOverBudget && (
-          <Text style={styles.warningText}>⚠️ You've exceeded your budget!</Text>
-        )}
-        {isNearBudget && (
-          <Text style={styles.warningText}>⚠️ You're near your budget limit</Text>
-        )}
-      </View>
+          {/* Quick Actions */}
+          <View style={styles.actionsRow}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => navigation.navigate('AddExpense')}
+              activeOpacity={0.9}
+            >
+              <View style={styles.actionIconContainer}>
+                <Plus size={24} color="white" />
+              </View>
+              <Text style={styles.actionLabel}>Add Expense</Text>
+            </TouchableOpacity>
 
-      <View style={styles.quickActions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('AddExpense')}>
-          <Text style={styles.actionIcon}>+</Text>
-          <Text style={styles.actionText}>Add Expense</Text>
-        </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.actionButtonSecondary]}
+              onPress={() => navigation.navigate('ExpenseList')}
+              activeOpacity={0.9}
+            >
+              <View style={[styles.actionIconContainer, styles.actionIconSecondary]}>
+                <List size={24} color="white" />
+              </View>
+              <Text style={styles.actionLabel}>View All</Text>
+            </TouchableOpacity>
+          </View>
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('ExpenseList')}>
-          <Text style={styles.actionIcon}>📋</Text>
-          <Text style={styles.actionText}>View All</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('MonthlyReport')}>
-          <Text style={styles.actionIcon}>📊</Text>
-          <Text style={styles.actionText}>Report</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.statsCard}>
-        <Text style={styles.statsTitle}>This Month</Text>
-        <View style={styles.statsRow}>
-          <Text style={styles.statsLabel}>Total Expenses:</Text>
-          <Text style={styles.statsValue}>{summary?.expenseCount || 0}</Text>
-        </View>
-      </View>
-    </ScrollView>
+          {/* Stats Card */}
+          <View style={styles.statsCard}>
+            <Text style={styles.statsTitle}>This Month</Text>
+            <View style={styles.statsRow}>
+              <Text style={styles.statsLabel}>Total Expenses</Text>
+              <View style={styles.statsValueContainer}>
+                <Text style={styles.statsValue}>
+                  {summary?.expenseCount || 0}
+                </Text>
+                <BarChart3 size={24} color="#3b82f6" />
+              </View>
+            </View>
+          </View>
+        </Animated.View>
+      </ScrollView>
+    </LinearGradient>
   );
 };
 
+// Updated Styles
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
+  container: { flex: 1 },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 40 },
+  content: { paddingHorizontal: 24, paddingTop: 64, paddingBottom: 32 },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
+    justifyContent: 'space-between',
+    marginBottom: 32,
   },
   greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#1e293b',
+    marginBottom: 4,
   },
   date: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
+    fontSize: 18,
+    color: '#6b7280',
+    fontWeight: '500',
   },
-  logoutText: {
-    color: '#FF3B30',
-    fontSize: 16,
+  logoutButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  
+  // ✅ NEW Budget Header
   budgetCard: {
-    backgroundColor: '#fff',
-    margin: 20,
-    padding: 20,
-    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 24,
+    padding: 32,
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  budgetTitle: {
+  budgetCardWarning: {
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    shadowColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  budgetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  budgetLabel: {
     fontSize: 16,
-    color: '#666',
+    color: '#6b7280',
+    fontWeight: '500',
+    marginLeft: 12,
   },
   budgetAmount: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#333',
-    marginVertical: 10,
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#1e293b',
+    marginBottom: 24,
   },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 4,
-    marginVertical: 15,
+  progressContainer: {
+    height: 12,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 8,
+    marginBottom: 24,
     overflow: 'hidden',
   },
-  progressFill: {
+  progressBar: {
     height: '100%',
-    backgroundColor: '#34C759',
-    borderRadius: 4,
-  },
-  progressNearBudget: {
-    backgroundColor: '#FF9500',
-  },
-  progressOverBudget: {
-    backgroundColor: '#FF3B30',
+    borderRadius: 8,
   },
   budgetDetails: {
     flexDirection: 'row',
@@ -209,82 +269,118 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#6b7280',
+    marginBottom: 4,
+    fontWeight: '500',
   },
   detailValue: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 5,
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#1e293b',
   },
   negativeValue: {
-    color: '#FF3B30',
+    color: '#ef4444',
   },
-  warningText: {
-    marginTop: 15,
-    color: '#FF9500',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  quickActions: {
+  warningContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    alignItems: 'center',
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: 'rgba(254, 243, 199, 0.7)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.3)',
+  },
+  warningIcon: { marginRight: 12 },
+  warningText: {
+    fontSize: 14,
+    color: '#92400e',
+    fontWeight: '600',
+    flex: 1,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    marginBottom: 32,
   },
   actionButton: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 15,
-    alignItems: 'center',
     flex: 1,
-    marginHorizontal: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 24,
+    padding: 24,
+    marginRight: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  actionIcon: {
-    fontSize: 30,
-    marginBottom: 10,
+  actionButtonSecondary: {
+    marginRight: 0,
+    marginLeft: 12,
   },
-  actionText: {
-    fontSize: 12,
-    color: '#333',
-    fontWeight: '600',
+  actionIconContainer: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#10b981',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  actionIconSecondary: {
+    backgroundColor: '#3b82f6',
+    shadowColor: '#3b82f6',
+  },
+  actionLabel: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#1e293b',
   },
   statsCard: {
-    backgroundColor: '#fff',
-    margin: 20,
-    marginTop: 0,
-    padding: 20,
-    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 24,
+    padding: 32,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
   },
   statsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#1e293b',
+    marginBottom: 24,
   },
   statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   statsLabel: {
     fontSize: 16,
-    color: '#666',
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  statsValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   statsValue: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#007AFF',
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#1e293b',
+    marginRight: 8,
   },
 });
 
