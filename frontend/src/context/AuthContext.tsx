@@ -24,13 +24,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadStoredAuth();
   }, []);
 
+  // ✅ FIXED: Check authToken (consistent with HomeScreen)
   const loadStoredAuth = async () => {
     try {
-      const storedToken = await AsyncStorage.getItem('token');
+      const authToken = await AsyncStorage.getItem('authToken');
       const storedUser = await AsyncStorage.getItem('user');
 
-      if (storedToken && storedUser) {
-        setToken(storedToken);
+      if (authToken && storedUser) {
+        setToken(authToken);
         setUser(JSON.parse(storedUser));
       }
     } catch (error) {
@@ -40,10 +41,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // ✅ FIXED: Use authToken consistently
   const login = async (email: string, password: string) => {
     try {
       const response = await authAPI.login(email, password);
-      await AsyncStorage.setItem('token', response.token);
+      await AsyncStorage.setItem('authToken', response.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.user));
       setToken(response.token);
       setUser(response.user);
@@ -55,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (email: string, password: string, name: string, monthlyBudget: number) => {
     try {
       const response = await authAPI.signup(email, password, name, monthlyBudget);
-      await AsyncStorage.setItem('token', response.token);
+      await AsyncStorage.setItem('authToken', response.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.user));
       setToken(response.token);
       setUser(response.user);
@@ -64,10 +66,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // ✅ FIXED: Remove both keys consistently
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('user');
+      await AsyncStorage.multiRemove(['authToken', 'user']);
       setToken(null);
       setUser(null);
     } catch (error) {

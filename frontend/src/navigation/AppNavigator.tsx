@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
@@ -26,8 +26,8 @@ const MainTabs = () => (
   <Tab.Navigator
     screenOptions={{
       headerShown: false,
-      tabBarActiveTintColor: '#007AFF',
-      tabBarInactiveTintColor: '#999',
+      tabBarActiveTintColor: '#3b82f6',
+      tabBarInactiveTintColor: '#9ca3af',
     }}>
     <Tab.Screen
       name="Home"
@@ -57,17 +57,12 @@ const MainTabs = () => (
 );
 
 const MainStack = () => (
-  <Stack.Navigator>
-    <Stack.Screen
-      name="MainTabs"
-      component={MainTabs}
-      options={{ headerShown: false }}
-    />
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="MainTabs" component={MainTabs} />
     <Stack.Screen
       name="AddExpense"
       component={AddExpenseScreen}
       options={{
-        title: 'Add Expense',
         presentation: 'modal',
       }}
     />
@@ -78,7 +73,12 @@ const AppNavigator = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return null;
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
   }
 
   return (
@@ -87,5 +87,20 @@ const AppNavigator = () => {
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+});
 
 export default AppNavigator;

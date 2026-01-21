@@ -41,15 +41,13 @@ const HomeScreen = ({ navigation }: any) => {
     setRefreshing(false);
   };
 
-  // ✅ INSTANT LOGOUT (No Alert)
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('authToken');
-      await AsyncStorage.multiRemove(['expensesCache', 'summaryCache']);
+      await AsyncStorage.multiRemove(['authToken', 'user', 'expensesCache', 'summaryCache']);
       await logout();
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Auth' }],
+        routes: [{ name: 'Login' }] 
       });
     } catch (error) {
       console.error('Logout error:', error);
