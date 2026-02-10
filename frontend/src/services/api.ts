@@ -1,6 +1,14 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthResponse, Expense, MonthlySummary, ExpenseCategory } from '../types';
+import {
+  AuthResponse,
+  Expense,
+  MonthlySummary,
+  ExpenseCategory,
+  BankImportParseResponse,
+  BankImportConfirmResponse,
+  BankImportTransaction
+} from '../types';
 
 const API_URL = 'http://localhost:5000/api'; // Change to your backend URL
 
@@ -118,6 +126,55 @@ export const expenseAPI = {
   getMonthlySummary: async (month?: number, year?: number) => {
     const response = await api.get<MonthlySummary>('/expenses/summary', {
       params: { month, year },
+    });
+    return response.data;
+  },
+};
+
+export const bankImportAPI = {
+  parseCsv: async (file: { uri: string; name: string; mimeType?: string }) => {
+    // Create FormData for file upload
+    const formData = new FormData();
+    
+    // React Native requires this exact structure for file uploads
+    formData.append('file', {
+      uri: file.uri,
+      type: file.mimeType || 'text/csv',
+      name: file.name,
+    } as any);
+
+    console.log('FormData prepared for upload:', {
+      uri: file.uri,
+      type: file.mimeType || 'text/csv',
+      name: file.name,
+    });
+
+    try {
+      // Get auth token
+      const token = await AsyncStorage.getItem('authToken');
+      
+      // Use axios directly with minimal config
+      const response = await axios.post<BankImportParseResponse>(
+        `${API_URL}/bank/import/parse`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            // DO NOT set Content-Type - let React Native set it automatically with boundary
+          },
+          timeout: 30000, // Increase timeout for file upload
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Upload error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  confirmImport: async (transactions: BankImportTransaction[]) => {
+    const response = await api.post<BankImportConfirmResponse>('/bank/import/confirm', {
+      transactions,
     });
     return response.data;
   },

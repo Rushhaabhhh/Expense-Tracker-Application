@@ -9,7 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LogOut, Plus, List, BarChart3, AlertCircle, DollarSign } from 'lucide-react-native';
+import { LogOut, Plus, List, BarChart3, AlertCircle, DollarSign, Upload } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { expenseAPI } from '../services/api';
@@ -161,6 +161,19 @@ const HomeScreen = ({ navigation }: any) => {
                 <List size={24} color="white" />
               </View>
               <Text style={styles.actionLabel}>View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.actionsRow}>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.actionButtonSingle]}
+              onPress={() => navigation.navigate('BankImport')}
+              activeOpacity={0.9}
+            >
+              <View style={[styles.actionIconContainer, styles.actionIconImport]}>
+                <Upload size={24} color="white" />
+              </View>
+              <Text style={styles.actionLabel}>Import from Bank</Text>
             </TouchableOpacity>
           </View>
 
@@ -319,6 +332,9 @@ const styles = StyleSheet.create({
     marginRight: 0,
     marginLeft: 12,
   },
+  actionButtonSingle: {
+    marginRight: 0,
+  },
   actionIconContainer: {
     width: 48,
     height: 48,
@@ -336,6 +352,10 @@ const styles = StyleSheet.create({
   actionIconSecondary: {
     backgroundColor: '#3b82f6',
     shadowColor: '#3b82f6',
+  },
+  actionIconImport: {
+    backgroundColor: '#0ea5e9',
+    shadowColor: '#0ea5e9',
   },
   actionLabel: {
     fontSize: 18,

@@ -13,6 +13,9 @@ export interface Expense {
   note: string;
   date: string;
   createdAt: string;
+  source?: string;
+  clientExpenseId?: string;
+  importHash?: string;
 }
 
 export type ExpenseCategory = 
@@ -40,4 +43,31 @@ export interface AuthResponse {
   message: string;
   token: string;
   user: User;
+}
+
+export interface BankImportTransaction {
+  clientExpenseId: string;
+  amount: number;
+  date: string;
+  description: string;
+  category: ExpenseCategory;
+  source: 'BANK_CSV';
+  isDuplicate?: boolean;
+}
+
+export interface BankImportParseResponse {
+  transactions: BankImportTransaction[];
+  skipped: { row: number; reason: string }[];
+  summary: {
+    totalRows: number;
+    validDebits: number;
+    duplicates: number;
+    skipped: number;
+  };
+}
+
+export interface BankImportConfirmResponse {
+  importedCount: number;
+  skippedDuplicates: number;
+  totalSelected: number;
 }

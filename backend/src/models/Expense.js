@@ -21,6 +21,18 @@ const expenseSchema = new mongoose.Schema({
     trim: true,
     maxlength: 200
   },
+  source: {
+    type: String,
+    default: 'MANUAL'
+  },
+  clientExpenseId: {
+    type: String,
+    trim: true
+  },
+  importHash: {
+    type: String,
+    trim: true
+  },
   date: {
     type: Date,
     required: true,
@@ -34,5 +46,6 @@ const expenseSchema = new mongoose.Schema({
 
 // Index for faster queries
 expenseSchema.index({ userId: 1, date: -1 });
+expenseSchema.index({ userId: 1, importHash: 1 });
 
 module.exports = mongoose.model('Expense', expenseSchema);

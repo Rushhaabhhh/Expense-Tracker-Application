@@ -11,6 +11,7 @@ import HomeScreen from '../screens/HomeScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
 import ExpenseListScreen from '../screens/ExpenseListScreen';
 import MonthlyReportScreen from '../screens/MonthlyReportScreen';
+import ImportBankScreen from '../screens/ImportBankScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -65,6 +66,10 @@ const MainStack = () => (
       options={{
         presentation: 'modal',
       }}
+    />
+    <Stack.Screen
+      name="BankImport"
+      component={ImportBankScreen}
     />
   </Stack.Navigator>
 );
