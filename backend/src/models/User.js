@@ -23,6 +23,18 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  alert80Sent: {
+    type: Boolean,
+    default: false
+  },
+  alert100Sent: {
+    type: Boolean,
+    default: false
+  },
+  alertMonth: {
+    type: String,
+    default: null // Format: 'YYYY-MM' to track which month alerts were sent for
+  },
   createdAt: {
     type: Date,
     default: Date.now

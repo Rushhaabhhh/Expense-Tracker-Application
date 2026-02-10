@@ -1,5 +1,74 @@
 const { validationResult } = require('express-validator');
 const Expense = require('../models/Expense');
+const User = require('../models/User');
+const emailService = require('../services/emailService');
+
+/**
+ * Check if user has crossed budget thresholds and send alerts
+ * @param {Object} user - User object
+ * @param {Date} expenseDate - Date of the expense
+ */
+async function checkAndSendBudgetAlerts(user, expenseDate) {
+  try {
+    // Skip if no budget is set
+    if (!user.monthlyBudget || user.monthlyBudget <= 0) {
+      return;
+    }
+
+    const expenseMonth = expenseDate.getMonth() + 1;
+    const expenseYear = expenseDate.getFullYear();
+    const currentMonthKey = `${expenseYear}-${String(expenseMonth).padStart(2, '0')}`;
+
+    // Reset alert flags if it's a new month
+    if (user.alertMonth !== currentMonthKey) {
+      user.alert80Sent = false;
+      user.alert100Sent = false;
+      user.alertMonth = currentMonthKey;
+    }
+
+    // Calculate monthly total for the expense's month
+    const startDate = new Date(expenseYear, expenseMonth - 1, 1);
+    const endDate = new Date(expenseYear, expenseMonth, 0, 23, 59, 59);
+
+    const expenses = await Expense.find({
+      userId: user._id,
+      date: { $gte: startDate, $lte: endDate }
+    });
+
+    const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const percentageUsed = (totalSpent / user.monthlyBudget) * 100;
+
+    // Check for 100% threshold
+    if (percentageUsed >= 100 && !user.alert100Sent) {
+      await emailService.sendBudgetAlert(
+        user.email,
+        user.name,
+        percentageUsed,
+        totalSpent,
+        user.monthlyBudget
+      );
+      user.alert100Sent = true;
+      user.alert80Sent = true; // Also mark 80% as sent to avoid duplicate
+      await user.save();
+    }
+    // Check for 80% threshold (only if 100% alert hasn't been sent)
+    else if (percentageUsed >= 80 && !user.alert80Sent) {
+      await emailService.sendBudgetAlert(
+        user.email,
+        user.name,
+        percentageUsed,
+        totalSpent,
+        user.monthlyBudget
+      );
+      user.alert80Sent = true;
+      await user.save();
+    }
+  } catch (error) {
+    console.error('Error checking budget alerts:', error);
+    // Don't throw error - alerts should not block expense creation
+  }
+}
+
 
 // Create expense
 exports.createExpense = async (req, res) => {
@@ -20,6 +89,9 @@ exports.createExpense = async (req, res) => {
     });
 
     await expense.save();
+
+    // Check budget alerts after saving expense
+    await checkAndSendBudgetAlerts(req.user, expense.date);
 
     res.status(201).json({
       message: 'Expense created successfully',
@@ -105,6 +177,9 @@ exports.updateExpense = async (req, res) => {
     if (date) expense.date = date;
 
     await expense.save();
+
+    // Check budget alerts after updating expense (amount or date might have changed)
+    await checkAndSendBudgetAlerts(req.user, expense.date);
 
     res.json({
       message: 'Expense updated successfully',

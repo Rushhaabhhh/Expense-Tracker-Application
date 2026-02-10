@@ -4,11 +4,15 @@ const cors = require('cors');
 const connectDB = require('./config/database');
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
+const emailService = require('./services/emailService');
 
 const app = express();
 
 // Connect to MongoDB
 connectDB();
+
+// Initialize email service
+emailService.initialize();
 
 // Middleware
 app.use(cors({
