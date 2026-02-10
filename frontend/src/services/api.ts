@@ -7,7 +7,8 @@ import {
   ExpenseCategory,
   BankImportParseResponse,
   BankImportConfirmResponse,
-  BankImportTransaction
+  BankImportTransaction,
+  ChatResponse
 } from '../types';
 
 const API_URL = 'http://localhost:5000/api'; // Change to your backend URL
@@ -176,6 +177,13 @@ export const bankImportAPI = {
     const response = await api.post<BankImportConfirmResponse>('/bank/import/confirm', {
       transactions,
     });
+    return response.data;
+  },
+};
+
+export const chatAPI = {
+  sendMessage: async (message: string) => {
+    const response = await api.post<ChatResponse>('/chat', { message });
     return response.data;
   },
 };

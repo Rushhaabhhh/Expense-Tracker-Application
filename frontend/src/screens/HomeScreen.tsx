@@ -9,7 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LogOut, Plus, List, BarChart3, AlertCircle, DollarSign, Upload } from 'lucide-react-native';
+import { LogOut, Plus, List, BarChart3, AlertCircle, DollarSign, Upload, MessageCircle } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { expenseAPI } from '../services/api';
@@ -174,6 +174,19 @@ const HomeScreen = ({ navigation }: any) => {
                 <Upload size={24} color="white" />
               </View>
               <Text style={styles.actionLabel}>Import from Bank</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.actionsRow}>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.actionButtonSingle]}
+              onPress={() => navigation.navigate('Chat')}
+              activeOpacity={0.9}
+            >
+              <View style={[styles.actionIconContainer, styles.actionIconChat]}>
+                <MessageCircle size={24} color="white" />
+              </View>
+              <Text style={styles.actionLabel}>Chat Assistant</Text>
             </TouchableOpacity>
           </View>
 
@@ -356,6 +369,10 @@ const styles = StyleSheet.create({
   actionIconImport: {
     backgroundColor: '#0ea5e9',
     shadowColor: '#0ea5e9',
+  },
+  actionIconChat: {
+    backgroundColor: '#a855f7',
+    shadowColor: '#a855f7',
   },
   actionLabel: {
     fontSize: 18,

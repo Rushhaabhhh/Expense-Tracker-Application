@@ -71,3 +71,16 @@ export interface BankImportConfirmResponse {
   skippedDuplicates: number;
   totalSelected: number;
 }
+
+export interface ChatMessage {
+  id: string;
+  text: string;
+  isUser: boolean;
+  timestamp: Date;
+}
+
+export interface ChatResponse {
+  message: string;
+  reply: string;
+  timestamp: string;
+}

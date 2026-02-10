@@ -5,6 +5,7 @@ const connectDB = require('./config/database');
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
 const bankImportRoutes = require('./routes/bankImport');
+const chatRoutes = require('./routes/chat');
 const emailService = require('./services/emailService');
 
 const app = express();
@@ -34,6 +35,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/bank', bankImportRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

@@ -12,6 +12,7 @@ import AddExpenseScreen from '../screens/AddExpenseScreen';
 import ExpenseListScreen from '../screens/ExpenseListScreen';
 import MonthlyReportScreen from '../screens/MonthlyReportScreen';
 import ImportBankScreen from '../screens/ImportBankScreen';
+import ChatScreen from '../screens/ChatScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -70,6 +71,10 @@ const MainStack = () => (
     <Stack.Screen
       name="BankImport"
       component={ImportBankScreen}
+    />
+    <Stack.Screen
+      name="Chat"
+      component={ChatScreen}
     />
   </Stack.Navigator>
 );
